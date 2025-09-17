@@ -6,6 +6,7 @@ The app exposes two HTTP-triggered endpoints:
 
 - `POST /api/process_file` — Accepts a JSON payload with a base64-encoded file and returns extracted Markdown (default) or a JSON metadata envelope.
 - `GET  /api/ping` — Lightweight health probe returning `pong`.
+- `POST /api/write_to_repo` — Create or replace a markdown (or any UTF-8 text) file in a GitHub repository (requires `GITHUB_TOKEN`).
 
 ## Features
 
@@ -141,6 +142,53 @@ Suggested production settings:
 
 - `AzureWebJobsStorage`
 - Any downstream service keys for indexing pipeline (not yet implemented)
+- `GITHUB_TOKEN` (PAT with `repo` scope to enable `/api/write_to_repo`)
+
+## Write to GitHub Endpoint (`POST /api/write_to_repo`)
+
+Create or update (replace) a file in a GitHub repository using the REST API. Useful for persisting extracted markdown into a docs repo.
+
+Environment variable required:
+
+```bash
+export GITHUB_TOKEN=<personal access token with repo scope>
+```
+
+Request body:
+
+```json
+{
+  "repo": "owner/repository",
+  "path": "docs/extracted/Architecture-Guidelines.md",
+  "content": "# Title\nExtracted markdown...",
+  "branch": "main",
+  "commit_message": "Add extracted Architecture Guidelines"
+}
+```
+
+Minimal required fields: `repo`, `path`, `content`. `branch` defaults to `main`; `commit_message` is auto-generated if omitted.
+
+Successful response:
+
+```json
+{
+  "status": "ok",
+  "action": "created",
+  "repo": "owner/repository",
+  "path": "docs/extracted/Architecture-Guidelines.md",
+  "branch": "main",
+  "commit_sha": "abc123def...",
+  "html_url": "https://github.com/owner/repository/blob/main/docs/extracted/Architecture-Guidelines.md"
+}
+```
+
+Error example (missing token):
+
+```json
+{ "status": "error", "error": "GITHUB_TOKEN environment variable not set" }
+```
+
+Security note: Endpoint currently anonymous; protect with `FUNCTION` or AAD in production. Token should be stored as an application setting in Azure, not committed to source.
 
 ## CORS (Cross-Origin Resource Sharing)
 
@@ -167,6 +215,7 @@ Ideas:
 - Add language detection & embeddings generation
 - Implement batching / chunking for large docs
 - Provide `/api/version` endpoint including git SHA
+- Enrich `/api/write_to_repo` with append mode, batch writes, or front-matter templating
 
 ## Error Handling Notes
 

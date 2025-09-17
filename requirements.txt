@@ -5,3 +5,4 @@
 azure-functions~=1.23
 markitdown[all]>=0.1.3
 pytest>=8.0
+requests>=2.32
