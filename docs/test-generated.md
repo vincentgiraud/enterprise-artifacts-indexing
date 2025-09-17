@@ -1,1 +1,0 @@
-# Generated\nHello from the function!
