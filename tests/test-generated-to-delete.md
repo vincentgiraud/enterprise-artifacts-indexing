@@ -1,2 +1,2 @@
-<!-- filename: use cases.png -->
-<!-- size_bytes: 86394 sha256: 6278531c74e7ca28dcfea4fa73669010746a5e73e61829d0b90ae3f395392d28 content_type: application/octet-stream -->
+<!-- filename: new frontend design.png -->
+<!-- size_bytes: 189363 sha256: 531b92cb802504eaf95b1e1272282959ec56e08f9bd7918568c748a083fe13f5 content_type: application/octet-stream -->
