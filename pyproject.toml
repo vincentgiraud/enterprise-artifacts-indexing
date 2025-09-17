@@ -1,0 +1,20 @@
+[project]
+name = "enterprise-artifacts-indexing"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "azure-functions~=1.23",
+    "markitdown[all]>=0.1.3",
+    "pytest>=8.0",
+    "requests>=2.32",
+]
+
+[tool.uv]
+package = true
+
+
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+addopts = "-q"
+
