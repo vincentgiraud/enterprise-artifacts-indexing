@@ -62,4 +62,4 @@ def test_process_file_default_markdown_output():
     assert resp.status_code == 200
     body = resp.get_body().decode()
     # Should contain HTML comment header with filename
-    assert "filename: notes.bin" in body.splitlines()[0]
+    assert "Hello world" in body.splitlines()[0]

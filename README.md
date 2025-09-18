@@ -5,7 +5,6 @@ A minimal Azure Functions (Python v2 programming model) service that converts up
 The app exposes two HTTP-triggered endpoints:
 
 - `POST /api/process_file` — Accepts a JSON payload with a base64-encoded file and returns extracted Markdown (default) or a JSON metadata envelope.
-- `GET  /api/ping` — Lightweight health probe returning `pong`.
 - `POST /api/write_to_repo` — Create or replace a markdown (or any UTF-8 text) file in a GitHub repository (requires `GITHUB_TOKEN`).
 
 ## Features
@@ -201,11 +200,91 @@ function_app.py               # FunctionApp & route handlers
 tests/                        # Unit & integration tests (pytest)
 tests/fixtures/documents/     # Sample documents used in integration tests
 tests/fixtures/images/        # Sample images used in integration tests
+tests/test_logic_app.json     # Sample Logic App workflow (SharePoint -> Functions -> GitHub)
 pyproject.toml                # Project metadata & dependencies
 requirements.txt              # Runtime deps for Azure Functions deployment
 host.json                     # Functions host config
 local.settings.json           # Local only runtime settings (ignored in git)
 ```
+
+## Logic App Integration (SharePoint ➜ Azure Function ➜ GitHub)
+
+The repository includes a sample Azure Logic App definition (`tests/test_logic_app.json`) demonstrating an automated pipeline:
+
+1. Poll a SharePoint document library for new or modified files (every minute).
+2. Retrieve file metadata and binary content.
+3. Invoke `/api/process_file` to convert each document to Markdown.
+4. Invoke `/api/write_to_repo` to commit the generated Markdown into a GitHub repository.
+
+### Workflow Overview
+
+Trigger (SharePoint change poll) → Get file properties → For each item → If not a folder:
+
+- Get file content
+- Get file metadata
+- POST to Function: process_file
+- POST to Function: write_to_repo
+
+Folders are skipped. The sample stores markdown under `tests/fixtures/generated/<SharePointFileId>.md` (adjust to suit your docs repo layout).
+
+### Importing the Logic App
+
+1. Create a Logic App (Consumption or Standard) in Azure.
+2. Open the Logic App in the Portal, choose Code View (or add a new workflow in Standard) and paste the contents of `tests/test_logic_app.json`.
+3. Save; you will be prompted to create / authorize the SharePoint connection referenced as `sharepointonline_template`.
+4. In the workflow parameters set:
+
+- `SharepointSiteAddress_template` — e.g. `https://<tenant>.sharepoint.com/sites/<site>`
+- `SharepointLibraryName_template` — e.g. `Documents`
+- `FunctionProcessFile_url` — Public URL of your deployed `process_file` endpoint
+- `FuntionWriteToRepo_url` — Public URL of your deployed `write_to_repo` endpoint (note the original typo in parameter name)
+
+If you later secure your Functions with keys (`authLevel=Function`), append `?code=<FUNCTION_KEY>` to both URLs.
+
+### GitHub Token Usage
+
+The Logic App does not send a token; the write endpoint relies on the Function App's `GITHUB_TOKEN` application setting. Ensure a PAT with `repo` scope is configured in Azure. The sample request sets:
+
+```json
+"repo": "vincentgiraud/enterprise-artifacts-indexing",
+"branch": "main",
+"path": "tests/fixtures/generated/@{body('Get_file_metadata')?['Id']}.md"
+```
+
+To use the original filename (slugified):
+
+```jsonc
+"path": "docs/extracted/@{replace(body('Get_file_metadata')?['Name'], ' ', '-')}.md"
+```
+
+### Adjusting Polling
+
+Current recurrence: every 1 minute. Increase interval for cost reduction or switch to an event-based SharePoint trigger for near real-time without full enumeration.
+
+### Performance & Scale Notes
+
+- The sample enumerates the entire library each run; for large libraries consider change tokens or filtering by extension early.
+- Large files may approach Logic App or Function timeouts—enforce size limits inside `process_file`.
+- Add retry policies on HTTP actions if needed (`runtimeConfiguration` supports this).
+
+### Local Development With Tunneling
+
+To test against a local Functions host, expose it via a tunnel (e.g. `ngrok http 7071`) and temporarily set the function URLs to the tunnel endpoints.
+
+### Common Issues
+
+| Symptom | Likely Cause | Resolution |
+|---------|--------------|------------|
+| 401/403 from Function | Missing function key after changing auth level | Append `?code=<key>` to URL |
+| 404 writing to repo | `GITHUB_TOKEN` missing / wrong scope | Add PAT with `repo` scope in App Settings |
+| SharePoint 404 | Site or library name mismatch | Verify full site URL and library display name |
+| Empty markdown | Unsupported format or extraction failure | Inspect function response for `(extraction_failed: ...)` |
+
+### Source Control & IaC
+
+The Logic App definition is placed under `tests/` for convenience. For production, treat workflow JSON as infrastructure code (e.g. move to `infrastructure/logic-apps/` and deploy via Bicep/ARM/Terraform or `az logicapp deployment source config-zip`).
+
+---
 
 ## Extending
 

@@ -1,0 +1,14 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "GITHUB_TOKEN": "REPLACE_LOCALLY_DO_NOT_COMMIT_REAL_TOKEN",
+    "AZURE_OPENAI_ENDPOINT": "https://your-resource.openai.azure.com",
+    "AZURE_OPENAI_API_KEY": "REPLACE_WITH_KEY_OR_USE_MI",
+    "AZURE_OPENAI_DEPLOYMENT": "gpt-4o",
+    "AZURE_OPENAI_API_VERSION": "2024-05-01-preview",
+    "LLM_MODEL": "gpt-4o",
+    "LLM_MAX_IMAGE_BYTES": "2000000"
+  }
+}

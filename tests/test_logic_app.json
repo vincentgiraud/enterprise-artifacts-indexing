@@ -1,0 +1,198 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "contentVersion": "1.0.0.0",
+        "triggers": {
+            "When_an_item_or_a_file_is_modified": {
+                "recurrence": {
+                    "interval": 1,
+                    "frequency": "Minute"
+                },
+                "evaluatedRecurrence": {
+                    "interval": 1,
+                    "frequency": "Minute"
+                },
+                "splitOn": "@triggerBody()?['value']",
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['sharepointonline_template']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/datasets/@{encodeURIComponent(encodeURIComponent('https://microsofteur.sharepoint.com/sites/zava-enterprise-guidelines'))}/tables/@{encodeURIComponent(encodeURIComponent('88f2ea2b-c8fd-4408-8e09-7095534bd3e3'))}/onchangeditems"
+                }
+            }
+        },
+        "actions": {
+            "Get_files_properties_for_all_items_in_the_library": {
+                "runAfter": {},
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['sharepointonline_template']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/datasets/@{encodeURIComponent(encodeURIComponent(parameters('SharepointSiteAddress_template')))}/tables/@{encodeURIComponent(encodeURIComponent(parameters('SharepointLibraryName_template')))}/getfileitems"
+                }
+            },
+            "For_each_item_in_the_library": {
+                "foreach": "@body('Get_files_properties_for_all_items_in_the_library')?['value']",
+                "actions": {
+                    "If_this_is_a_File": {
+                        "actions": {
+                            "Get_file_content": {
+                                "type": "ApiConnection",
+                                "inputs": {
+                                    "host": {
+                                        "connection": {
+                                            "name": "@parameters('$connections')['sharepointonline_template']['connectionId']"
+                                        }
+                                    },
+                                    "method": "get",
+                                    "path": "/datasets/@{encodeURIComponent(encodeURIComponent(parameters('SharepointSiteAddress_template')))}/files/@{encodeURIComponent(item()?['{Identifier}'])}/content",
+                                    "queries": {
+                                        "inferContentType": true
+                                    }
+                                }
+                            },
+                            "Get_file_metadata": {
+                                "type": "ApiConnection",
+                                "inputs": {
+                                    "host": {
+                                        "connection": {
+                                            "name": "@parameters('$connections')['sharepointonline_template']['connectionId']"
+                                        }
+                                    },
+                                    "method": "get",
+                                    "path": "/datasets/@{encodeURIComponent(encodeURIComponent('https://microsofteur.sharepoint.com/sites/zava-enterprise-guidelines'))}/files/@{encodeURIComponent(item()?['{Identifier}'])}"
+                                }
+                            },
+                            "Mark_it_down": {
+                                "runAfter": {
+                                    "Get_file_metadata": [
+                                        "Succeeded"
+                                    ],
+                                    "Get_file_content": [
+                                        "Succeeded"
+                                    ]
+                                },
+                                "type": "Http",
+                                "inputs": {
+                                    "uri": "@parameters('FunctionProcessFile_url')",
+                                    "method": "POST",
+                                    "body": {
+                                        "filename": "@{body('Get_file_metadata')?['Name']}",
+                                        "content_base64": "@{base64(body('Get_file_content'))}"
+                                    }
+                                },
+                                "runtimeConfiguration": {
+                                    "contentTransfer": {
+                                        "transferMode": "Chunked"
+                                    }
+                                }
+                            },
+                            "Write_to_repo": {
+                                "runAfter": {
+                                    "Mark_it_down": [
+                                        "Succeeded"
+                                    ]
+                                },
+                                "type": "Http",
+                                "inputs": {
+                                    "uri": "@parameters('FuntionWriteToRepo_url')",
+                                    "method": "POST",
+                                    "body": {
+                                        "repo": "vincentgiraud/enterprise-artifacts-indexing",
+                                        "branch": "main",
+                                        "path": "tests/fixtures/generated/@{body('Get_file_metadata')?['Id']}.md",
+                                        "content": "@body('Mark_it_down')"
+                                    }
+                                },
+                                "runtimeConfiguration": {
+                                    "contentTransfer": {
+                                        "transferMode": "Chunked"
+                                    }
+                                }
+                            }
+                        },
+                        "else": {
+                            "actions": {
+                                "No_action_needed_for_Folder": {
+                                    "type": "Compose",
+                                    "inputs": "No action needed for Folder"
+                                }
+                            }
+                        },
+                        "expression": {
+                            "and": [
+                                {
+                                    "equals": [
+                                        "@items('For_each_item_in_the_library')['{IsFolder}']",
+                                        false
+                                    ]
+                                }
+                            ]
+                        },
+                        "type": "If"
+                    }
+                },
+                "runAfter": {
+                    "Get_files_properties_for_all_items_in_the_library": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Foreach"
+            }
+        },
+        "outputs": {},
+        "parameters": {
+            "SharepointSiteAddress": {
+                "defaultValue": "",
+                "type": "String"
+            },
+            "SharepointLibraryName": {
+                "defaultValue": "",
+                "type": "String"
+            },
+            "SharepointSiteAddress_template": {
+                "type": "String"
+            },
+            "SharepointLibraryName_template": {
+                "type": "String"
+            },
+            "FunctionProcessFile_url": {
+                "defaultValue": "https://ent-art-ind.azurewebsites.net/api/process_file",
+                "type": "String"
+            },
+            "FuntionWriteToRepo_url": {
+                "defaultValue": "https://ent-art-ind.azurewebsites.net/api/write_to_repo",
+                "type": "String"
+            },
+            "$connections": {
+                "type": "Object",
+                "defaultValue": {}
+            }
+        }
+    },
+    "parameters": {
+        "SharepointSiteAddress_template": {
+            "value": "https://microsofteur.sharepoint.com/sites/zava-enterprise-guidelines"
+        },
+        "SharepointLibraryName_template": {
+            "value": "Documents"
+        },
+        "$connections": {
+            "type": "Object",
+            "value": {
+                "sharepointonline_template": {
+                    "id": "/subscriptions/7cbc0d57-f67e-42a3-93b8-24aa6e1569ab/providers/Microsoft.Web/locations/swedencentral/managedApis/sharepointonline",
+                    "connectionId": "/subscriptions/7cbc0d57-f67e-42a3-93b8-24aa6e1569ab/resourceGroups/rg-sc-hack25/providers/Microsoft.Web/connections/sharepointonline"
+                }
+            }
+        }
+    }
+}

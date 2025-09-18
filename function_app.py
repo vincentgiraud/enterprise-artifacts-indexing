@@ -10,12 +10,41 @@ Uses the new programming model (no explicit function.json needed).
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Optional
 
 import azure.functions as func
 import os
 import base64 as _b64
 import requests
+import io
+
+# ---------------------------------------------------------------
+# Lightweight .env support for local runs (outside `func host start`).
+# The Azure Functions host already injects settings from local.settings.json;
+# this only supplements missing keys from a developer-provided .env file.
+# We purposely avoid adding an external dependency (like python-dotenv).
+# ---------------------------------------------------------------
+def _load_local_dotenv() -> None:
+    env_path = os.path.join(os.path.dirname(__file__), ".env")
+    if not os.path.isfile(env_path):  # nothing to do
+        return
+    try:
+        with open(env_path, "r", encoding="utf-8") as fh:
+            for raw_line in fh:
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                # Do not override variables already present (e.g. from host / CI)
+                if key and key not in os.environ:
+                    os.environ[key] = value
+    except Exception as e:  # noqa: BLE001 - best effort only
+        print(f"[env] Skipping .env load due to error: {e}")
+
+
+_load_local_dotenv()
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
@@ -37,6 +66,68 @@ def process_file(req: func.HttpRequest) -> func.HttpResponse:
     """
     import base64
     import hashlib
+
+    # ----------------------- Helper (LLM integration) ----------------------- #
+    def _is_image(fname: str, ctype: Optional[str]) -> bool:
+        if ctype and ctype.startswith("image/"):
+            return True
+        fname_lower = fname.lower()
+        return any(fname_lower.endswith(ext) for ext in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff"))
+
+    def _build_markitdown_with_optional_llm(use_llm: bool):
+        """Return a MarkItDown instance.
+
+        If use_llm=True and Azure/OpenAI env vars are present, attempt to enable LLM enrichment.
+        Falls back silently if anything fails. We avoid hard dependency on openai at import time so tests
+        (which don't set these vars) remain fast and offline.
+        """
+        try:
+            from markitdown import MarkItDown  # type: ignore
+        except Exception:  # pragma: no cover - should not happen unless package missing
+            return None
+
+        if not use_llm:
+            # Always plain MarkItDown for non-image documents per updated requirement.
+            return MarkItDown()
+
+        # Prefer Azure OpenAI if endpoint provided
+        azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
+        azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT")
+        azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION")
+
+        # Simplified prompt for images only (avoid diagram generation for non-images now)
+        llm_prompt = (
+            "If the input represents an image or visual diagram, optionally add a concise mermaid code block that approximates structural relationships. "
+            "If not appropriate, return only the extracted content with no additions."
+        )
+
+        client = None
+        model_name = None
+        # Attempt Azure first
+        if azure_endpoint and azure_api_key:
+            try:  # pragma: no cover - network not executed in tests
+                from openai import AzureOpenAI  # type: ignore
+                client = AzureOpenAI(
+                    api_key=azure_api_key,
+                    azure_endpoint=azure_endpoint,
+                    api_version=azure_api_version,
+                )
+                model_name = azure_deployment
+            except Exception as e:  # noqa: BLE001
+                print(f"[process_file] AzureOpenAI init failed: {e}")
+                client = None
+
+        try:
+            # MarkItDown currently supports passing llm_client + llm_model + llm_prompt.
+            return MarkItDown(llm_client=client, llm_model=model_name, llm_prompt=llm_prompt)
+        except Exception as e:  # noqa: BLE001
+            print(f"[process_file] MarkItDown LLM integration failed, falling back: {e}")
+            try:
+                return MarkItDown()
+            except Exception:
+                return None
+
 
     # When invoking azure.functions.HttpRequest directly in tests, the params dict
     # may not be auto-populated from the URL query string, so fall back to parsing
@@ -95,10 +186,10 @@ def process_file(req: func.HttpRequest) -> func.HttpResponse:
 
     markdown_text = None
     try:
-        from markitdown import MarkItDown  # type: ignore
-        import io
-
-        mid = MarkItDown()
+        is_image = _is_image(filename, content_type)
+        mid = _build_markitdown_with_optional_llm(use_llm=is_image)
+        if mid is None:
+            raise RuntimeError("MarkItDown unavailable")
         result = mid.convert(io.BytesIO(file_bytes), filename=filename)
         if isinstance(result, dict):
             markdown_text = result.get("markdown") or result.get("output")
@@ -108,13 +199,8 @@ def process_file(req: func.HttpRequest) -> func.HttpResponse:
         markdown_text = f"(extraction_failed: {e.__class__.__name__})"
 
     if not want_json:
-        header = [
-            f"<!-- filename: {filename} -->",
-            f"<!-- size_bytes: {len(file_bytes)} sha256: {sha256_hash} content_type: {content_type} -->",
-            "",
-        ]
         return func.HttpResponse(
-            "\n".join(header) + (markdown_text or ""),
+            (markdown_text or ""),
             status_code=200,
             mimetype="text/markdown",
         )
