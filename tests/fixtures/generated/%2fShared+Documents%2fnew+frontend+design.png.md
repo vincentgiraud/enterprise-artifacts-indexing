@@ -1,24 +1,25 @@
 
 # Description:
-The image appears to represent a user interface (UI) for an e-commerce or shopping platform centered around interior paints. It shows a navigation structure with categories like "Furniture," "Parts & Decor," "Color Preferences," and "Practical Considerations." There are product images (Whispering Blue, Frosted Blue) with prices and descriptions. On the right, a chatbot interface seems to be assisting the user with recommendations, and at the bottom, there's a shopping cart.
+The image shows an e-commerce website interface for shopping interior paints. Key elements are:
 
-Mermaid code block representing the UI structure:
+1. **Top Navigation Bar**: Logo, menu icons, "Sign Out" button.
+2. **Promotional Banner**: Large visual showcasing summer-themed interior design and a discount offer (up to 50% off).
+3. **Product Display Section**:
+   - Two products: "Whispering Blue" and "Frosted Blue" with price tags.
+4. **Chatbot Panel (Right Sidebar)**: Conversational assistant named "Cora" assisting with suggestions based on "Furniture," "Plants & Decor," "Color Preferences," and "Practical Considerations."
+5. **Shopping Cart (Bottom Right)**: Empty cart details with subtotal.
 
 ```mermaid
 graph TD
-    A[Home Page]
-    A --> B[Header]
-    A --> C[Main Banner]
-    A --> D[Product Section]
-    A --> E[Chatbot Assistant]
-    A --> F[Shopping Cart]
-    C --> G[Featured Message]
-    D --> H[Whispering Blue Paint]
-    D --> I[Frosted Blue Paint]
-    E --> J[Recommendation Categories]
-    J --> K[Furniture]
-    J --> L[Parts & Decor]
-    J --> M[Color Preferences]
-    J --> N[Practical Considerations]
-    F --> O[Empty Cart Message]
+A[Website Interface] --> B[Top Navigation Bar]
+A --> C[Promotional Banner]
+A --> D[Product Display Section]
+D --> D1[Whispering Blue - $47.99]
+D --> D2[Frosted Blue - $49.99]
+A --> E[Chatbot Panel]
+E --> E1[Furniture Recommendations]
+E --> E2[Plants & Decor Recommendations]
+E --> E3[Color Preferences]
+E --> E4[Practical Considerations]
+A --> F[Shopping Cart]
 ```
