@@ -1,19 +1,78 @@
 
 # Description:
+Extracted content:
+
+**Roles:**
+- Shopper
+- Interior Designer
+- Store Associate
+- Inventory Manager
+- Loyalty Programme Manager
+
+**Use Cases:**
+- Personalised Product Recommendation
+- Customer Query Handling
+- In-Store Layout Guidance
+- Real-Time Inventory Check
+- Offer Triggering at Checkout
+- Loyalty Programme Management
+
+**Agents:**
+- Shopper Agent
+- Interior Design Agent
+- Inventory Agent
+- Customer Loyalty Agent
+
+---
+
+**Mermaid Code Block:**
+
 ```mermaid
 graph TD
-    A(Shopper) --> B(Personalised Product Recommendation)
-    A --> C(Customer Query Handling)
-    D(Interior Designer) --> E(In-Store Layout Guidance)
-    F(Store Associate) --> G(Real-Time Inventory Check)
-    F --> H(Offer Triggering at Checkout)
-    I(Inventory Manager) --> G
-    J(Loyalty Programme Manager) --> K(Loyalty Programme Management)
+    subgraph Roles
+        Shopper
+        InteriorDesigner[Interior Designer]
+        StoreAssociate[Store Associate]
+        InventoryManager[Inventory Manager]
+        LoyaltyProgMgr[Loyalty Programme Manager]
+    end
 
-    B --> L(Shopper Agent)
-    C --> L
-    E --> M(Interior Design Agent)
-    G --> N(Inventory Agent)
-    H --> N
-    K --> O(Customer Loyalty Agent)
+    subgraph UseCases
+        ProductRecommendation[Personalised Product Recommendation]
+        QueryHandling[Customer Query Handling]
+        LayoutGuidance[In-Store Layout Guidance]
+        InventoryCheck[Real-Time Inventory Check]
+        OfferTrigger[Offer Triggering at Checkout]
+        LoyaltyManagement[Loyalty Programme Management]
+    end
+
+    subgraph Agents
+        ShopperAgent
+        DesignAgent[Interior Design Agent]
+        InventoryAgent
+        LoyaltyAgent[Customer Loyalty Agent]
+    end
+
+    Shopper --> ProductRecommendation
+    Shopper --> QueryHandling
+    Shopper --> LayoutGuidance
+
+    InteriorDesigner --> LayoutGuidance
+
+    StoreAssociate --> InventoryCheck
+    StoreAssociate --> QueryHandling
+
+    InventoryManager --> InventoryCheck
+    InventoryManager --> OfferTrigger
+
+    LoyaltyProgMgr --> LoyaltyManagement
+
+    ProductRecommendation --> ShopperAgent
+    QueryHandling --> ShopperAgent
+
+    LayoutGuidance --> DesignAgent
+    InventoryCheck --> InventoryAgent
+
+    OfferTrigger --> InventoryAgent
+    LoyaltyManagement --> LoyaltyAgent
 ```
