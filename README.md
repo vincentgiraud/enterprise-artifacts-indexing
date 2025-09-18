@@ -102,7 +102,7 @@ Core Tools will expose `http://localhost:7071/api/process_file`.
 ### Quick cURL example
 
 ```bash
-b64=$(base64 -w0 artifacts/"Architecture Guidelines.docx")
+b64=$(base64 -w0 tests/fixtures/documents/"Architecture Guidelines.docx")
 curl -s -X POST \
   -H "Content-Type: application/json" \
   -d "{\"filename\":\"Architecture Guidelines.docx\",\"content_base64\":\"$b64\"}" \
@@ -197,13 +197,14 @@ If you call the Function endpoints directly from a browser-based frontend (SPA) 
 ## Project Structure
 
 ```text
-function_app.py        # FunctionApp & route handlers
-artifacts/             # Sample documents used in tests
-tests/                 # Unit & integration tests (pytest)
-pyproject.toml         # Project metadata & dependencies
-requirements.txt       # Runtime deps for Azure Functions deployment
-host.json              # Functions host config
-local.settings.json    # Local only runtime settings (ignored in git)
+function_app.py               # FunctionApp & route handlers
+tests/                        # Unit & integration tests (pytest)
+tests/fixtures/documents/     # Sample documents used in integration tests
+tests/fixtures/images/        # Sample images used in integration tests
+pyproject.toml                # Project metadata & dependencies
+requirements.txt              # Runtime deps for Azure Functions deployment
+host.json                     # Functions host config
+local.settings.json           # Local only runtime settings (ignored in git)
 ```
 
 ## Extending

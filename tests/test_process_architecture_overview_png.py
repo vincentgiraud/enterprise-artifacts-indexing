@@ -20,7 +20,7 @@ def test_process_image_artifact_markdown():
     Validates header comments and that the body was produced (even if extractor
     yields no additional markdown beyond headers for an image-only file).
     """
-    path = "artifacts/architecture overview.png"
+    path = "tests/fixtures/images/architecture overview.png"
     if not os.path.exists(path):  # Safety to avoid false pass if artifact missing
         raise AssertionError(f"Required test artifact missing: {path}")
 

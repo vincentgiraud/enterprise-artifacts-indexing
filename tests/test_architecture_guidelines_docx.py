@@ -9,7 +9,7 @@ def test_process_file_architecture_guidelines_docx_json():
 
     Validates end-to-end path and JSON envelope when ?format=json is used.
     """
-    path = "artifacts/Architecture Guidelines.docx"
+    path = "tests/fixtures/documents/Architecture Guidelines.docx"
     if not os.path.exists(path):  # safety in case artifact moved
         raise AssertionError(f"Required test artifact missing: {path}")
 
@@ -56,7 +56,7 @@ def test_process_file_architecture_guidelines_docx_markdown():
 
     Asserts presence of HTML comment header and adequate extracted content length.
     """
-    path = "artifacts/Architecture Guidelines.docx"
+    path = "tests/fixtures/documents/Architecture Guidelines.docx"
     if not os.path.exists(path):
         raise AssertionError(f"Required test artifact missing: {path}")
 
