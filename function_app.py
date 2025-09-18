@@ -1,6 +1,9 @@
-"""Azure Functions Python v2 minimal app.
+"""Azure Functions Python v2 app for document processing and GitHub integration.
 
-Provides a single HTTP-triggered function at /api/hello that returns a greeting.
+Exposes two HTTP-triggered endpoints:
+- /api/process_file: Accepts a document (base64-encoded) and returns extracted Markdown or JSON.
+- /api/write_to_repo: Creates or updates a text file in a specified GitHub repository.
+
 Uses the new programming model (no explicit function.json needed).
 """
 
@@ -127,15 +130,6 @@ def process_file(req: func.HttpRequest) -> func.HttpResponse:
         },
     }
     return func.HttpResponse(json.dumps(resp), status_code=200, mimetype="application/json")
-
-
-# Health probe (optional simple text) - helpful for quick container checks
-@app.function_name(name="ping")
-@app.route(route="ping", methods=[func.HttpMethod.GET], auth_level=func.AuthLevel.ANONYMOUS)
-def ping(req: func.HttpRequest) -> func.HttpResponse:  # pragma: no cover - trivial
-    # 'req' param name must match a binding; using '_' caused FunctionLoadError in some Core Tools versions
-    return func.HttpResponse("pong", status_code=200, mimetype="text/plain")
-
 
 # New endpoint: create or replace a markdown (or any text) file in a GitHub repo
 @app.function_name(name="write_to_repo")
